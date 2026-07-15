@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+
+{% block title %}Riwayat — InfuMonitor{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Riwayat Monitoring</h1>
+        <p class="subtitle">Histori data monitoring infus</p>
+    </div>
+</div>
+
+<!-- Filters -->
+<form method="GET" action="/history">
+    <div class="filter-bar">
+        <div class="form-group">
+            <label>Pasien</label>
+            <input type="text" name="patient" class="form-input" placeholder="Nama pasien..." value="{{ filters.patient }}">
+        </div>
+        <div class="form-group">
+            <label>Ruangan</label>
+            <select name="room" class="form-select">
+                <option value="">Semua Ruangan</option>
+                {% for r in rooms %}
+                <option value="{{ r.name }}" {% if filters.room == r.name %}selected{% endif %}>{{ r.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Tanggal</label>
+            <input type="date" name="date" class="form-input" value="{{ filters.date }}">
+        </div>
+        <div class="form-group">
+            <label>Status</label>
+            <select name="status" class="form-select">
+                <option value="">Semua Status</option>
+                <option value="ACTIVE" {% if filters.status == 'ACTIVE' %}selected{% endif %}>Aktif</option>
+                <option value="COMPLETED" {% if filters.status == 'COMPLETED' %}selected{% endif %}>Selesai</option>
+                <option value="PAUSED" {% if filters.status == 'PAUSED' %}selected{% endif %}>Paused</option>
+                <option value="ERROR" {% if filters.status == 'ERROR' %}selected{% endif %}>Error</option>
+            </select>
+        </div>
+        <button type="submit" class="btn btn-primary">Filter</button>
+    </div>
+</form>
+
+<!-- Data Table -->
+<div class="card" style="overflow-x:auto;">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Waktu</th>
+                <th>Pasien</th>
+                <th>Kamar</th>
+                <th>Obat</th>
+                <th>Volume (ml)</th>
+                <th>Flow Rate</th>
+                <th>Status</th>
+                <th>Alarm</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for rec in records %}
+            <tr>
+                <td>{{ rec.timestamp.strftime('%Y-%m-%d %H:%M') if rec.timestamp else '-' }}</td>
+                <td style="font-weight:600;">{{ rec.infusion.patient.name }}</td>
+                <td>{{ rec.infusion.patient.room.name }}</td>
+                <td>{{ rec.infusion.medication_name }}</td>
+                <td>{{ "%.1f"|format(rec.volume) }}</td>
+                <td>{{ rec.flow_rate }} ml/jam</td>
+                <td>
+                    <span class="badge badge-{{ rec.infusion.status|lower }}">{{ rec.infusion.status }}</span>
+                </td>
+                <td>
+                    {% if rec.alarm_active %}
+                        <span class="badge badge-error">{{ rec.alarm_reason or 'Alarm' }}</span>
+                    {% else %}
+                        <span style="color:var(--text-muted);">—</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+            {% if not records %}
+            <tr>
+                <td colspan="8" style="text-align:center; color:var(--text-muted); padding:2rem;">
+                    Tidak ada data riwayat yang ditemukan.
+                </td>
+            </tr>
+            {% endif %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+
+{% block title %}Data Infus — InfuMonitor{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Data Infus</h1>
+        <p class="subtitle">Kelola data infus pasien</p>
+    </div>
+</div>
+
+<!-- Add Form -->
+<div class="card" style="margin-bottom:1.5rem;">
+    <h3 style="margin-bottom:1rem; font-size:0.9rem; color:var(--text-secondary);">Tambah Infus Baru</h3>
+    <form method="POST" action="/infusions/add">
+        <div class="form-row">
+            <div class="form-group">
+                <label>Pasien</label>
+                <select name="patient_id" class="form-select" required>
+                    {% for p in patients %}
+                    <option value="{{ p.id }}">{{ p.name }} ({{ p.medical_id }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Nama Obat / Cairan</label>
+                <input type="text" name="medication_name" class="form-input" placeholder="NaCl 0.9%" required>
+            </div>
+            <div class="form-group">
+                <label>Volume (ml)</label>
+                <input type="number" name="total_volume" class="form-input" placeholder="500" min="1" step="any" required>
+            </div>
+            <div class="form-group">
+                <label>Flow Rate (ml/jam)</label>
+                <input type="number" name="flow_rate" class="form-input" placeholder="100" min="1" step="any" required>
+            </div>
+            <button type="submit" class="btn btn-primary">+ Tambah</button>
+        </div>
+    </form>
+</div>
+
+<!-- Table -->
+<div class="card" style="overflow-x:auto;">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Pasien</th>
+                <th>Kamar</th>
+                <th>Obat</th>
+                <th>Volume</th>
+                <th>Flow Rate</th>
+                <th>Status</th>
+                <th>Aksi</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for inf in infusions %}
+            <tr>
+                <td>{{ loop.index }}</td>
+                <td style="font-weight:600;">{{ inf.patient.name }}</td>
+                <td>{{ inf.patient.room.name if inf.patient.room else '-' }}</td>
+                <td>{{ inf.medication_name }}</td>
+                <td>{{ "%.1f"|format(inf.current_volume) }} / {{ "%.0f"|format(inf.initial_volume) }} ml</td>
+                <td>{{ inf.target_flow_rate }} ml/jam</td>
+                <td><span class="badge badge-{{ inf.status|lower }}">{{ inf.status }}</span></td>
+                <td>
+                    <div class="btn-group">
+                        <button type="button" class="btn btn-warning btn-sm" onclick="openEditModal('edit-infusion-{{ inf.id }}')">Edit</button>
+                        <form method="POST" action="/infusions/delete/{{ inf.id }}" style="display:inline;" onsubmit="return confirm('Hapus infus ini?')">
+                            <button type="submit" class="btn btn-danger btn-sm">Hapus</button>
+                        </form>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Edit Modals -->
+{% for inf in infusions %}
+<div class="edit-modal-backdrop" id="edit-infusion-{{ inf.id }}">
+    <div class="edit-modal">
+        <h3>✏️ Edit Infus</h3>
+        <form method="POST" action="/infusions/edit/{{ inf.id }}">
+            <div class="form-group">
+                <label>Pasien</label>
+                <input type="text" class="form-input" value="{{ inf.patient.name }}" disabled>
+            </div>
+            <div class="form-group">
+                <label>Nama Obat / Cairan</label>
+                <input type="text" name="medication_name" class="form-input" value="{{ inf.medication_name }}" required>
+            </div>
+            <div class="form-group">
+                <label>Flow Rate (ml/jam)</label>
+                <input type="number" name="flow_rate" class="form-input" value="{{ inf.target_flow_rate }}" min="1" step="any" required>
+            </div>
+            <div class="form-group">
+                <label>Status</label>
+                <select name="status" class="form-select" required>
+                    <option value="ACTIVE" {% if inf.status == 'ACTIVE' %}selected{% endif %}>Aktif</option>
+                    <option value="PAUSED" {% if inf.status == 'PAUSED' %}selected{% endif %}>Paused</option>
+                    <option value="COMPLETED" {% if inf.status == 'COMPLETED' %}selected{% endif %}>Selesai</option>
+                    <option value="ERROR" {% if inf.status == 'ERROR' %}selected{% endif %}>Error</option>
+                </select>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-secondary" onclick="closeEditModal('edit-infusion-{{ inf.id }}')">Batal</button>
+                <button type="submit" class="btn btn-primary">Simpan</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endfor %}
+{% endblock %}

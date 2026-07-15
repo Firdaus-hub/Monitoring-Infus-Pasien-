@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+
+{% block title %}Live Monitoring — InfuMonitor{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Live Monitoring</h1>
+        <p class="subtitle">Pemantauan infus secara real-time</p>
+    </div>
+    <div class="ws-status" id="ws-status">
+        <span class="ws-dot" id="ws-dot"></span>
+        <span id="ws-text">Menghubungkan...</span>
+    </div>
+</div>
+
+<div class="infusion-grid" id="infusion-container">
+    {% for inf in infusions %}
+    <div class="card infusion-card" id="card-{{ inf.id }}"
+         data-id="{{ inf.id }}"
+         data-initial="{{ inf.initial_volume }}">
+
+        <div class="infusion-header">
+            <div>
+                <div class="infusion-patient" id="name-{{ inf.id }}">{{ inf.patient.name }}</div>
+                <div class="infusion-meta" id="meta-{{ inf.id }}">
+                    {{ inf.patient.room.name }} · {{ inf.patient.medical_id }} · {{ inf.medication_name }}
+                </div>
+            </div>
+            <div class="infusion-volume">
+                <span class="vol-num" id="vol-{{ inf.id }}">{{ "%.1f"|format(inf.current_volume) }}</span>
+                <span class="vol-unit">ml</span>
+                <div style="font-size:0.75rem; color:var(--text-muted);" id="rate-{{ inf.id }}">
+                    {{ inf.target_flow_rate }} ml/jam
+                </div>
+            </div>
+        </div>
+
+        <div class="progress-track">
+            <div class="progress-fill" id="prog-{{ inf.id }}"
+                 style="width: {{ (inf.current_volume / inf.initial_volume * 100) if inf.initial_volume > 0 else 0 }}%;">
+            </div>
+        </div>
+
+        <div class="infusion-details">
+            <span>Est. Habis: <strong id="est-{{ inf.id }}">Menghitung...</strong></span>
+            <span>Flow: <strong id="flow-{{ inf.id }}">{{ inf.target_flow_rate }} ml/jam</strong></span>
+        </div>
+
+        <div class="alarm-badge" id="alarm-{{ inf.id }}">
+            ⚠️ <span id="alarm-text-{{ inf.id }}">VOLUME KRITIS</span>
+        </div>
+    </div>
+    {% endfor %}
+
+    {% if not infusions %}
+    <div class="card" style="grid-column: 1 / -1; text-align: center; padding: 3rem; color: var(--text-muted);">
+        Tidak ada infus aktif saat ini.
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const wsStatus = document.getElementById('ws-status');
+const wsDot = document.getElementById('ws-dot');
+const wsText = document.getElementById('ws-text');
+
+const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+const wsUrl = `${protocol}//${window.location.host}/ws/monitoring`;
+
+function connectWS() {
+    const ws = new WebSocket(wsUrl);
+
+    ws.onopen = () => {
+        wsDot.classList.remove('offline');
+        wsText.textContent = 'Connected';
+    };
+
+    ws.onclose = () => {
+        wsDot.classList.add('offline');
+        wsText.textContent = 'Disconnected';
+        setTimeout(connectWS, 3000);
+    };
+
+    ws.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        data.forEach(inf => {
+            const card = document.getElementById(`card-${inf.id}`);
+            if (!card) return;
+
+            const initial = parseFloat(card.dataset.initial) || 500;
+            const pct = Math.min(100, Math.max(0, (inf.volume / initial) * 100));
+
+            // Update volume
+            document.getElementById(`vol-${inf.id}`).textContent = inf.volume.toFixed(1);
+            document.getElementById(`flow-${inf.id}`).textContent = `${inf.flow_rate} ml/jam`;
+
+            // Update progress bar
+            const prog = document.getElementById(`prog-${inf.id}`);
+            prog.style.width = `${pct}%`;
+            prog.className = 'progress-fill';
+            if (inf.volume < 20) prog.classList.add('critical');
+            else if (inf.volume < 50) prog.classList.add('low');
+
+            // Update card border
+            card.className = 'card infusion-card';
+            if (inf.volume < 20) card.classList.add('critical');
+            else if (inf.volume < 50) card.classList.add('low');
+
+            // Estimated empty
+            if (inf.est_empty) {
+                const d = new Date(inf.est_empty);
+                document.getElementById(`est-${inf.id}`).textContent = d.toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'});
+            }
+
+            // Alarm
+            const alarm = document.getElementById(`alarm-${inf.id}`);
+            const alarmText = document.getElementById(`alarm-text-${inf.id}`);
+            if (inf.alarm) {
+                alarm.classList.add('visible');
+                alarmText.textContent = inf.alarm_reason || 'ALARM';
+            } else {
+                alarm.classList.remove('visible');
+            }
+        });
+    };
+}
+
+connectWS();
+</script>
+{% endblock %}

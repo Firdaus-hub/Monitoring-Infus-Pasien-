@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard — InfuMonitor{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Dashboard</h1>
+        <p class="subtitle">Ringkasan status infus rumah sakit</p>
+    </div>
+</div>
+
+<!-- Stat Cards -->
+<div class="grid-stats">
+    <div class="card stat-card primary">
+        <div class="stat-label">Infus Aktif</div>
+        <div class="stat-value">{{ stats.active }}</div>
+    </div>
+    <div class="card stat-card warning">
+        <div class="stat-label">Hampir Habis (&lt; 50ml)</div>
+        <div class="stat-value">{{ stats.low }}</div>
+    </div>
+    <div class="card stat-card danger">
+        <div class="stat-label">Total Alarm</div>
+        <div class="stat-value">{{ stats.alarms }}</div>
+    </div>
+    <div class="card stat-card success">
+        <div class="stat-label">Total Pasien</div>
+        <div class="stat-value">{{ stats.total_patients }}</div>
+    </div>
+</div>
+
+<!-- Chart -->
+<div class="card chart-container">
+    <h3 style="margin-bottom: 1rem; font-size: 1rem; color: var(--text-secondary);">Status Volume Infus Aktif</h3>
+    <canvas id="volumeChart" height="80"></canvas>
+</div>
+
+<!-- Active Infusions Table -->
+<div class="card" style="margin-top: 1.5rem;">
+    <h3 style="margin-bottom: 1rem; font-size: 1rem; color: var(--text-secondary);">Infus Aktif</h3>
+    <div style="overflow-x:auto;">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Pasien</th>
+                    <th>Kamar</th>
+                    <th>Obat</th>
+                    <th>Volume</th>
+                    <th>Flow Rate</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for inf in infusions %}
+                <tr>
+                    <td style="font-weight:600;">{{ inf.patient.name }}</td>
+                    <td>{{ inf.patient.room.name }}</td>
+                    <td>{{ inf.medication_name }}</td>
+                    <td>{{ "%.1f"|format(inf.current_volume) }} / {{ "%.0f"|format(inf.initial_volume) }} ml</td>
+                    <td>{{ inf.target_flow_rate }} ml/jam</td>
+                    <td>
+                        {% if inf.current_volume < 20 %}
+                            <span class="badge badge-error">Kritis</span>
+                        {% elif inf.current_volume < 50 %}
+                            <span class="badge badge-paused">Rendah</span>
+                        {% else %}
+                            <span class="badge badge-active">Normal</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const ctx = document.getElementById('volumeChart').getContext('2d');
+const labels = [{% for inf in infusions %}'{{ inf.patient.name }}',{% endfor %}];
+const volumes = [{% for inf in infusions %}{{ inf.current_volume }},{% endfor %}];
+const initials = [{% for inf in infusions %}{{ inf.initial_volume }},{% endfor %}];
+
+new Chart(ctx, {
+    type: 'bar',
+    data: {
+        labels: labels,
+        datasets: [
+            {
+                label: 'Volume Sisa (ml)',
+                data: volumes,
+                backgroundColor: volumes.map(v => v < 20 ? 'rgba(239,68,68,0.7)' : v < 50 ? 'rgba(245,158,11,0.7)' : 'rgba(99,102,241,0.7)'),
+                borderRadius: 6,
+            },
+            {
+                label: 'Volume Awal (ml)',
+                data: initials,
+                backgroundColor: 'rgba(148,163,184,0.15)',
+                borderRadius: 6,
+            }
+        ]
+    },
+    options: {
+        responsive: true,
+        plugins: {
+            legend: {
+                labels: { color: '#94a3b8', font: { family: 'Inter' } }
+            }
+        },
+        scales: {
+            x: { ticks: { color: '#64748b', font: { family: 'Inter' } }, grid: { color: '#2e3348' } },
+            y: { ticks: { color: '#64748b', font: { family: 'Inter' } }, grid: { color: '#2e3348' }, beginAtZero: true }
+        }
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Infusion Monitoring System{% endblock %}</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+    {% block head %}{% endblock %}
+</head>
+<body>
+
+{% if not is_auth_page %}
+
+<!-- Mobile Hamburger -->
+<button class="hamburger" id="hamburger" aria-label="Toggle menu">
+    <span></span><span></span><span></span>
+</button>
+<div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+<aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+        <div class="logo-icon">💧</div>
+        <h2>InfuMonitor<span>Hospital System</span></h2>
+    </div>
+
+    <div class="nav-section">Menu Utama</div>
+    <a href="/" class="nav-link {% if page == 'dashboard' %}active{% endif %}">
+        <span class="nav-icon">📊</span> Dashboard
+    </a>
+    <a href="/monitoring" class="nav-link {% if page == 'monitoring' %}active{% endif %}">
+        <span class="nav-icon">🔴</span> Live Monitoring
+    </a>
+    <a href="/history" class="nav-link {% if page == 'history' %}active{% endif %}">
+        <span class="nav-icon">📋</span> Riwayat
+    </a>
+
+    <div class="nav-section">Data Master</div>
+    <a href="/patients" class="nav-link {% if page == 'patients' %}active{% endif %}">
+        <span class="nav-icon">🧑‍🤝‍🧑</span> Data Pasien
+    </a>
+    <a href="/rooms" class="nav-link {% if page == 'rooms' %}active{% endif %}">
+        <span class="nav-icon">🏥</span> Data Ruangan
+    </a>
+    <a href="/infusions" class="nav-link {% if page == 'infusions' %}active{% endif %}">
+        <span class="nav-icon">💉</span> Data Infus
+    </a>
+    <a href="/users" class="nav-link {% if page == 'users' %}active{% endif %}">
+        <span class="nav-icon">👤</span> Data Pengguna
+    </a>
+
+    <div class="sidebar-footer">
+        <a href="/logout" class="nav-link" style="color: var(--danger);">
+            <span class="nav-icon">🚪</span> Logout
+        </a>
+    </div>
+</aside>
+
+<main class="main-content">
+    {% block content %}{% endblock %}
+</main>
+
+<!-- Toast Container -->
+<div class="toast-container" id="toast-container"></div>
+
+{% else %}
+    {% block auth_content %}{% endblock %}
+{% endif %}
+
+{% block scripts %}{% endblock %}
+
+<script>
+// --- Mobile sidebar toggle ---
+(function() {
+    const hamburger = document.getElementById('hamburger');
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('sidebar-overlay');
+    if (hamburger && sidebar && overlay) {
+        hamburger.addEventListener('click', () => {
+            sidebar.classList.toggle('open');
+            overlay.classList.toggle('visible');
+            hamburger.classList.toggle('active');
+        });
+        overlay.addEventListener('click', () => {
+            sidebar.classList.remove('open');
+            overlay.classList.remove('visible');
+            hamburger.classList.remove('active');
+        });
+    }
+})();
+
+// --- Toast notifications from cookie ---
+(function() {
+    function getCookie(name) {
+        const m = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
+        return m ? decodeURIComponent(m[1]) : null;
+    }
+    function deleteCookie(name) {
+        document.cookie = name + '=; Max-Age=0; path=/';
+    }
+    const msg = getCookie('flash_msg');
+    const type = getCookie('flash_type') || 'success';
+    if (msg) {
+        const container = document.getElementById('toast-container');
+        if (container) {
+            const toast = document.createElement('div');
+            toast.className = 'toast toast-' + type;
+            toast.innerHTML = '<span class="toast-icon">' + (type === 'success' ? '✅' : '❌') + '</span><span>' + msg + '</span>';
+            container.appendChild(toast);
+            // Animate in
+            requestAnimationFrame(() => toast.classList.add('show'));
+            // Auto remove
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 300);
+            }, 4000);
+        }
+        deleteCookie('flash_msg');
+        deleteCookie('flash_type');
+    }
+})();
+
+// --- Edit modal helpers ---
+function openEditModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) { modal.classList.add('visible'); }
+}
+function closeEditModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) { modal.classList.remove('visible'); }
+}
+</script>
+
+</body>
+</html>

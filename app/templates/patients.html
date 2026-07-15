@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+
+{% block title %}Data Pasien — InfuMonitor{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Data Pasien</h1>
+        <p class="subtitle">Kelola data pasien rumah sakit</p>
+    </div>
+</div>
+
+<!-- Add Form -->
+<div class="card" style="margin-bottom:1.5rem;">
+    <h3 style="margin-bottom:1rem; font-size:0.9rem; color:var(--text-secondary);">Tambah Pasien Baru</h3>
+    <form method="POST" action="/patients/add">
+        <div class="form-row">
+            <div class="form-group">
+                <label>Nama Pasien</label>
+                <input type="text" name="name" class="form-input" placeholder="Nama lengkap" required>
+            </div>
+            <div class="form-group">
+                <label>No. Rekam Medis</label>
+                <input type="text" name="medical_id" class="form-input" placeholder="RM-2026-xxx" required>
+            </div>
+            <div class="form-group">
+                <label>Ruangan</label>
+                <select name="room_id" class="form-select" required>
+                    {% for r in rooms %}
+                    <option value="{{ r.id }}">{{ r.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <button type="submit" class="btn btn-primary">+ Tambah</button>
+        </div>
+    </form>
+</div>
+
+<!-- Table -->
+<div class="card" style="overflow-x:auto;">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Nama</th>
+                <th>Rekam Medis</th>
+                <th>Ruangan</th>
+                <th>Aksi</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for p in patients %}
+            <tr>
+                <td>{{ loop.index }}</td>
+                <td style="font-weight:600;">{{ p.name }}</td>
+                <td>{{ p.medical_id }}</td>
+                <td>{{ p.room.name if p.room else '-' }}</td>
+                <td>
+                    <div class="btn-group">
+                        <button type="button" class="btn btn-warning btn-sm" onclick="openEditModal('edit-patient-{{ p.id }}')">Edit</button>
+                        <form method="POST" action="/patients/delete/{{ p.id }}" style="display:inline;" onsubmit="return confirm('Hapus pasien {{ p.name }}?')">
+                            <button type="submit" class="btn btn-danger btn-sm">Hapus</button>
+                        </form>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Edit Modals -->
+{% for p in patients %}
+<div class="edit-modal-backdrop" id="edit-patient-{{ p.id }}">
+    <div class="edit-modal">
+        <h3>✏️ Edit Pasien</h3>
+        <form method="POST" action="/patients/edit/{{ p.id }}">
+            <div class="form-group">
+                <label>Nama Pasien</label>
+                <input type="text" name="name" class="form-input" value="{{ p.name }}" required>
+            </div>
+            <div class="form-group">
+                <label>No. Rekam Medis</label>
+                <input type="text" name="medical_id" class="form-input" value="{{ p.medical_id }}" required>
+            </div>
+            <div class="form-group">
+                <label>Ruangan</label>
+                <select name="room_id" class="form-select" required>
+                    {% for r in rooms %}
+                    <option value="{{ r.id }}" {% if p.room_id == r.id %}selected{% endif %}>{{ r.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-secondary" onclick="closeEditModal('edit-patient-{{ p.id }}')">Batal</button>
+                <button type="submit" class="btn btn-primary">Simpan</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endfor %}
+{% endblock %}
